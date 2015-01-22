@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:game="http://schemas.android.com/apk/res/com.leo.game"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+
+    <com.leo.game.view.GameLayout
+        android:id="@+id/igamelayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#ffffff"
+        android:padding="10dp"
+        game:columns="4"
+        game:interval="2dp" >
+    </com.leo.game.view.GameLayout>
+
+</LinearLayout>

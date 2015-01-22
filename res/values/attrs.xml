@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+     <attr name="columns" format="integer" />
+     <attr name="interval" format="dimension" />
+     
+     <declare-styleable name="GameLayout">
+        <attr name="columns" />
+        <attr name="interval" />
+    </declare-styleable>
+</resources>
