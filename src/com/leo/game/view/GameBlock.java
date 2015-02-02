@@ -18,7 +18,8 @@ public class GameBlock extends View {
 
 	private int mBackgoundColor;
 	private int mTextColor;
-
+	private int mTextSize;
+	
 	public GameBlock(Context context) {
 		super(context);
 		mPaint = new Paint();
@@ -27,6 +28,7 @@ public class GameBlock extends View {
 		Resources res = getContext().getResources();
 		mTextColor = res.getColor(R.color.text_color);
 		mBackgoundColor = res.getColor(R.color.color_number_0);
+		mTextSize = res.getDimensionPixelSize(R.dimen.game_block_text_size);
 	}
 
 	public void setValue(int value) {
@@ -74,6 +76,7 @@ public class GameBlock extends View {
 		
 		mText = String.valueOf(mValue);
 		mPaint.setAntiAlias(true);
+		mPaint.setTextSize(mTextSize);
 		mPaint.getTextBounds(mText, 0, mText.length(), mRect);
 		
 		invalidate();
@@ -95,7 +98,7 @@ public class GameBlock extends View {
 		mPaint.setStyle(Style.FILL);
 		canvas.drawRect(0, 0, getWidth(), getHeight(), mPaint);
 
-		if (mText != null) {
+		if (mValue != 0 && mText != null) {
 			mPaint.setColor(mTextColor);
 			float x = (getWidth() - mRect.width()) / 2.0f;
 			float y = (getHeight() + mRect.height()) / 2.0f;

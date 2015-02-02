@@ -1,17 +1,24 @@
 package com.leo.game.view;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 import com.leo.game.R;
 
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.TypedValue;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.widget.RelativeLayout;
 
 public class GameLayout extends RelativeLayout {
 	public static final int DEFAULT_COLUMNS = 4;
 	public static final int DEFAULT_INTERVAL = 16;
+	public static final int FLING_MIN_DISTANCE = 50;
 
 	private GameBlock[] mGameBlocks;
 
@@ -19,6 +26,14 @@ public class GameLayout extends RelativeLayout {
 	private int mColumns;
 	private int mInterval;
 	private boolean isFirstLayout = true;
+	private GestureDetector mGestureDetector;
+	
+	private boolean isMergeHappen = true;
+	private boolean isMoveHappen = true;
+	
+	enum Orientation {
+		LEFT, RIGHT, TOP, BOTTOM
+	}
 
 	public GameLayout(Context context) {
 		this(context, null, 0);
@@ -51,6 +66,8 @@ public class GameLayout extends RelativeLayout {
 		mGameBlocks = new GameBlock[mColumns * mColumns];
 		mPadding = min(getPaddingLeft(), getPaddingTop(), getPaddingRight(),
 				getPaddingBottom());
+		mGestureDetector = new GestureDetector(context,
+				new GameGestureListeren());
 	}
 
 	@Override
@@ -58,17 +75,19 @@ public class GameLayout extends RelativeLayout {
 		super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 		int minWidth = Math.min(getMeasuredWidth(), getMeasuredHeight());
 
-		int blockWidth = (minWidth - mPadding - mPadding - mInterval * (mColumns - 1)) / mColumns;
+		int blockWidth = (minWidth - mPadding - mPadding - mInterval
+				* (mColumns - 1))
+				/ mColumns;
 
 		if (isFirstLayout) {
 			for (int i = 0; i < mGameBlocks.length; i++) {
 				GameBlock block = new GameBlock(getContext());
-				block.setId(i+1);
+				block.setId(i + 1);
 				mGameBlocks[i] = block;
 				RelativeLayout.LayoutParams params = new LayoutParams(
 						blockWidth, blockWidth);
 
-				if ( (i % mColumns) != (mColumns - 1)) {
+				if ((i % mColumns) != (mColumns - 1)) {
 					params.rightMargin = mInterval;
 				}
 
@@ -84,6 +103,8 @@ public class GameLayout extends RelativeLayout {
 				}
 				addView(block, params);
 			}
+			
+			generateNum();
 		}
 
 		isFirstLayout = false;
@@ -91,6 +112,95 @@ public class GameLayout extends RelativeLayout {
 		setMeasuredDimension(minWidth, minWidth);
 
 	}
+
+	private boolean isFull() {
+		for (int i = 0; i < mGameBlocks.length; i++) {
+			if (mGameBlocks[i].getValue() == 0) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private boolean isGameOver() {
+		if (!isFull()) {
+			return false;
+		}
+		for (int i = 0; i < mGameBlocks.length; i++) {
+			GameBlock item = mGameBlocks[i];
+			int index = 0;
+			if (i % mColumns != 0) {
+				index = i - 1;
+				if (item.getValue() == mGameBlocks[index].getValue()) {
+					return false;
+				}
+			}
+
+			if ((i % mColumns != mColumns - 1)) {
+				index = i + 1;
+				if ((item.getValue() == mGameBlocks[index].getValue())) {
+					return false;
+				}
+			}
+
+			index = i - mColumns;
+			if ((item.getValue() == mGameBlocks[index].getValue())) {
+				return false;
+			}
+
+			index = i + mColumns;
+			if ((item.getValue() == mGameBlocks[index].getValue())) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private int getPositionByType(Orientation orientation, int rowX, int rowY) {
+		int position = 0;
+		switch (orientation) {
+		case LEFT:
+			position = rowX * mColumns + rowY;
+			break;
+		case RIGHT:
+			position = rowX * mColumns - rowY + mColumns - 1;
+			break;
+		case TOP:
+			position = rowX + rowY * mColumns;
+			break;
+		case BOTTOM:
+			position = rowX + (mColumns - 1 - rowY) * mColumns;
+			break;
+		default:
+			break;
+		}
+		return position;
+	}
+	
+	public void generateNum() {
+		if(isGameOver()){
+			return;
+		}
+	
+		if (!isFull()) {
+			if (isMoveHappen || isMergeHappen) {
+				Random random = new Random();
+				int next = random.nextInt(mColumns*mColumns);
+				GameBlock item = mGameBlocks[next];
+
+				while (item.getValue() != 0) {
+					next = random.nextInt(16);
+					item = mGameBlocks[next];
+				}
+
+				item.setValue(Math.random() > 0.75 ? 4 : 2);
+
+				isMergeHappen = isMoveHappen = false;
+			}
+		}
+	}
+	
+	
 
 	private int min(int... params) {
 		int min = params[0];
@@ -101,5 +211,110 @@ public class GameLayout extends RelativeLayout {
 		}
 		return min;
 	}
+
+	private void flipTo(Orientation orientation) {
+		for (int i = 0; i < mColumns; i++) {
+			List<GameBlock> row = new ArrayList<GameBlock>();
+			for (int j = 0; j < mColumns; j++) {
+				int index = getPositionByType(orientation, i, j);
+				GameBlock item = mGameBlocks[index];
+				if (item.getValue() != 0) {
+					row.add(item);
+				}
+			}
+			
+			for (int j = 0; j < mColumns && j < row.size(); j++) {
+				int index = getPositionByType(orientation, i, j);
+				GameBlock item = mGameBlocks[index];
+				if (item.getValue() != row.get(j).getValue()) {
+					isMoveHappen = true;
+				}
+			}
+			
+			mergeItem(row);
+			
+			for (int j = 0; j < mColumns; j++) {
+				int index = getPositionByType(orientation, i, j);
+				if (row.size() > j) {
+					mGameBlocks[index].setValue(row.get(j).getValue());
+				} else {
+					mGameBlocks[index].setValue(0);
+				}
+			}
+		}
+		
+		generateNum();
+	}
+
 	
+	private void mergeItem(List<GameBlock> row) {
+		if (row.size() < 2){
+			return;
+		}
+
+		for (int j = 0; j < row.size() - 1; j++) {
+			GameBlock item1 = row.get(j);
+			GameBlock item2 = row.get(j + 1);
+
+			if (item1.getValue() == item2.getValue()) {
+				isMergeHappen = true;
+				int val = item1.getValue() + item2.getValue();
+				item1.setValue(val);
+
+			
+				for (int k = j + 1; k < row.size() - 1; k++) {
+					row.get(k).setValue(row.get(k + 1).getValue());
+				}
+
+				row.get(row.size() - 1).setValue(0);
+				return;
+			}
+
+		}
+
+	}
+	
+	private void printfPosition(Orientation orientation) {
+		for (int i = 0; i < mColumns; i++) {
+			for (int j = 0; j < mColumns; j++) {
+				Log.e("liyu",
+						orientation + ":"
+								+ getPositionByType(orientation, i, j));
+			}
+		}
+	}
+
+	@Override
+	public boolean onTouchEvent(MotionEvent event) {
+		mGestureDetector.onTouchEvent(event);
+		return true;
+	}
+
+	class GameGestureListeren extends GestureDetector.SimpleOnGestureListener {
+
+		@Override
+		public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX,
+				float velocityY) {
+			float x = e2.getX() - e1.getX();
+			float y = e2.getY() - e1.getY();
+
+			if (x > FLING_MIN_DISTANCE
+					&& Math.abs(velocityX) > Math.abs(velocityY)) {
+				flipTo(Orientation.RIGHT);
+			} else if (x < -FLING_MIN_DISTANCE
+					&& Math.abs(velocityX) > Math.abs(velocityY)) {
+				flipTo(Orientation.LEFT);
+
+			} else if (y > FLING_MIN_DISTANCE
+					&& Math.abs(velocityX) < Math.abs(velocityY)) {
+				flipTo(Orientation.BOTTOM);
+
+			} else if (y < -FLING_MIN_DISTANCE
+					&& Math.abs(velocityX) < Math.abs(velocityY)) {
+				flipTo(Orientation.TOP);
+			}
+			return true;
+		}
+
+	}
 }
