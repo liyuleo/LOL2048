@@ -1,6 +1,7 @@
 package com.leo.game.view;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
@@ -27,10 +28,10 @@ public class GameLayout extends RelativeLayout {
 	private int mInterval;
 	private boolean isFirstLayout = true;
 	private GestureDetector mGestureDetector;
-	
+
 	private boolean isMergeHappen = true;
 	private boolean isMoveHappen = true;
-	
+
 	enum Orientation {
 		LEFT, RIGHT, TOP, BOTTOM
 	}
@@ -68,6 +69,7 @@ public class GameLayout extends RelativeLayout {
 				getPaddingBottom());
 		mGestureDetector = new GestureDetector(context,
 				new GameGestureListeren());
+
 	}
 
 	@Override
@@ -103,14 +105,13 @@ public class GameLayout extends RelativeLayout {
 				}
 				addView(block, params);
 			}
-			
-			generateNum();
+
+			generateItem();
 		}
 
 		isFirstLayout = false;
 
 		setMeasuredDimension(minWidth, minWidth);
-
 	}
 
 	private boolean isFull() {
@@ -144,13 +145,17 @@ public class GameLayout extends RelativeLayout {
 			}
 
 			index = i - mColumns;
-			if ((item.getValue() == mGameBlocks[index].getValue())) {
-				return false;
+			if (index >= 0) {
+				if ((item.getValue() == mGameBlocks[index].getValue())) {
+					return false;
+				}
 			}
 
 			index = i + mColumns;
-			if ((item.getValue() == mGameBlocks[index].getValue())) {
-				return false;
+			if (index < mGameBlocks.length) {
+				if ((item.getValue() == mGameBlocks[index].getValue())) {
+					return false;
+				}
 			}
 		}
 		return true;
@@ -160,32 +165,33 @@ public class GameLayout extends RelativeLayout {
 		int position = 0;
 		switch (orientation) {
 		case LEFT:
-			position = rowX * mColumns + rowY;
-			break;
-		case RIGHT:
 			position = rowX * mColumns - rowY + mColumns - 1;
 			break;
+		case RIGHT:
+			position = rowX * mColumns + rowY;
+			break;
 		case TOP:
-			position = rowX + rowY * mColumns;
+			position = rowX + (mColumns - 1) * mColumns - rowY * mColumns;
 			break;
 		case BOTTOM:
-			position = rowX + (mColumns - 1 - rowY) * mColumns;
+			position = rowX + rowY * mColumns;
 			break;
 		default:
 			break;
 		}
 		return position;
 	}
-	
-	public void generateNum() {
-		if(isGameOver()){
+
+	public void generateItem() {
+		if (isGameOver()) {
 			return;
 		}
-	
+
 		if (!isFull()) {
+			Log.e("liyu", "generateNum:" + isMoveHappen + ":" + isMergeHappen);
 			if (isMoveHappen || isMergeHappen) {
 				Random random = new Random();
-				int next = random.nextInt(mColumns*mColumns);
+				int next = random.nextInt(mColumns * mColumns);
 				GameBlock item = mGameBlocks[next];
 
 				while (item.getValue() != 0) {
@@ -195,12 +201,11 @@ public class GameLayout extends RelativeLayout {
 
 				item.setValue(Math.random() > 0.75 ? 4 : 2);
 
-				isMergeHappen = isMoveHappen = false;
+				isMergeHappen = false;
+				isMoveHappen = false;
 			}
 		}
 	}
-	
-	
 
 	private int min(int... params) {
 		int min = params[0];
@@ -213,68 +218,80 @@ public class GameLayout extends RelativeLayout {
 	}
 
 	private void flipTo(Orientation orientation) {
+		Log.e("liyu", "flipTo:" + orientation);
 		for (int i = 0; i < mColumns; i++) {
-			List<GameBlock> row = new ArrayList<GameBlock>();
+			GameBlock[] itmes = new GameBlock[mColumns];
 			for (int j = 0; j < mColumns; j++) {
 				int index = getPositionByType(orientation, i, j);
-				GameBlock item = mGameBlocks[index];
-				if (item.getValue() != 0) {
-					row.add(item);
-				}
+				itmes[j] = mGameBlocks[index];
 			}
-			
-			for (int j = 0; j < mColumns && j < row.size(); j++) {
-				int index = getPositionByType(orientation, i, j);
-				GameBlock item = mGameBlocks[index];
-				if (item.getValue() != row.get(j).getValue()) {
-					isMoveHappen = true;
-				}
+
+			mergeItem(itmes, orientation, i);
+
+		}
+
+		generateItem();
+	}
+
+	private void mergeItem(GameBlock[] items, Orientation orientation, int RowX) {
+		List<GameBlock> rows = new ArrayList<GameBlock>();
+		for (int i = 0; i < items.length; i++) {
+			if (items[i].getValue() != 0) {
+				rows.add(items[i]);
 			}
-			
-			mergeItem(row);
-			
-			for (int j = 0; j < mColumns; j++) {
-				int index = getPositionByType(orientation, i, j);
-				if (row.size() > j) {
-					mGameBlocks[index].setValue(row.get(j).getValue());
-				} else {
-					mGameBlocks[index].setValue(0);
+		}
+
+		int size = rows.size();
+
+		if (size != items.length) {
+			isMoveHappen = true;
+		}
+
+		for (int j = 0; j < size; j++) {
+			GameBlock currItem = rows.get(j);
+			int currValue = currItem.getValue();
+			if (j + 1 < size) {
+				GameBlock nextItem = rows.get(j + 1);
+				int nextValue = nextItem.getValue();
+				if (currValue == nextValue) {
+					currItem.setValue(0);
+					nextItem.setValue(currValue * 2);
+					isMergeHappen = true;
+					j = j + 1;
 				}
 			}
 		}
 		
-		generateNum();
-	}
-
-	
-	private void mergeItem(List<GameBlock> row) {
-		if (row.size() < 2){
-			return;
-		}
-
-		for (int j = 0; j < row.size() - 1; j++) {
-			GameBlock item1 = row.get(j);
-			GameBlock item2 = row.get(j + 1);
-
-			if (item1.getValue() == item2.getValue()) {
-				isMergeHappen = true;
-				int val = item1.getValue() + item2.getValue();
-				item1.setValue(val);
-
-			
-				for (int k = j + 1; k < row.size() - 1; k++) {
-					row.get(k).setValue(row.get(k + 1).getValue());
-				}
-
-				row.get(row.size() - 1).setValue(0);
-				return;
+		rows.clear();
+		
+		for (int i = 0; i < items.length; i++) {
+			if (items[i].getValue() != 0) {
+				rows.add(items[i]);
 			}
-
 		}
+		
+		size = rows.size();
+		
+		int[] values = new int[items.length];
+		int index = items.length - size;
+		
+		for (int i = 0; i < values.length; i++) {
+			if(i < index){
+				values[i] = 0;
+			}else{
+				values[i] = rows.get(0).getValue();
+				rows.remove(0);
+			}
+		}
+		
+		for (int i = 0; i < values.length; i++) {
+			items[i].setValue(values[i]);
+		}
+		
 
 	}
-	
-	private void printfPosition(Orientation orientation) {
+
+	protected void printfPosition(Orientation orientation) {
 		for (int i = 0; i < mColumns; i++) {
 			for (int j = 0; j < mColumns; j++) {
 				Log.e("liyu",

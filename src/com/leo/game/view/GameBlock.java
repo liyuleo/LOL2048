@@ -106,4 +106,10 @@ public class GameBlock extends View {
 		}
 	}
 
+	@Override
+	public String toString() {
+		return getId() + ":" + getValue();
+	}
+
+	
 }
