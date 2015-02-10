@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <dimen name="game_block_text_size">40sp</dimen>
+    <dimen name="game_layout_padding">10dp</dimen>
+    <dimen name="game_score_padding">10dp</dimen>
+     <dimen name="game_interval">2dp</dimen>
 </resources>

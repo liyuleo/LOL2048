@@ -1,7 +1,6 @@
 package com.leo.game.view;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
@@ -21,6 +20,8 @@ public class GameLayout extends RelativeLayout {
 	public static final int DEFAULT_INTERVAL = 16;
 	public static final int FLING_MIN_DISTANCE = 50;
 
+	private GameScoreChangeListeren mGameScoreChangeListeren;
+	
 	private GameBlock[] mGameBlocks;
 
 	private int mPadding;
@@ -255,7 +256,11 @@ public class GameLayout extends RelativeLayout {
 				int nextValue = nextItem.getValue();
 				if (currValue == nextValue) {
 					currItem.setValue(0);
-					nextItem.setValue(currValue * 2);
+					int sum = currValue + nextValue;
+					nextItem.setValue(sum);
+					if(mGameScoreChangeListeren != null){
+						mGameScoreChangeListeren.gameScoreChange(sum);
+					}
 					isMergeHappen = true;
 					j = j + 1;
 				}
@@ -307,6 +312,11 @@ public class GameLayout extends RelativeLayout {
 		return true;
 	}
 
+	public void setGameScoreLister(GameScoreChangeListeren gameScoreChangeListeren){
+		mGameScoreChangeListeren = gameScoreChangeListeren;
+	}
+	
+	
 	class GameGestureListeren extends GestureDetector.SimpleOnGestureListener {
 
 		@Override
